@@ -7,7 +7,7 @@ resource "digitalocean_droplet" "tailscale" {
 
   user_data = templatefile("cloud_init.tftpl", {
     tailscale_auth_key = var.tailscale_auth_key
-    advertise_routes   = digitalocean_vpc.interview_network.ip_range
+    advertise_routes   = var.advertise_routes
   })
 }
 
