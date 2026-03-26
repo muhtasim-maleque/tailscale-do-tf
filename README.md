@@ -1,6 +1,6 @@
 # Tailscale subnet router on DigitalOcean with Terraform
 
-This repository provides a Terraform-based deployment for a Tailscale Subnet Router and an isolated test device on DigitalOcean. It demonstrates how to securely bridge a Tailnet to a private subnet, providing remote access to internal resources without requiring the Tailscale agent to be installed on every individual machine.
+This repository provides a Terraform-based deployment for a Tailscale Subnet Router and an isolated VM on DigitalOcean. It demonstrates how to securely bridge a Tailnet to a private subnet, providing remote access to internal resources without requiring the Tailscale agent to be installed on every individual machine.
 
 ## How it works
 ![Tailscale Architecture](./architecture.png)
@@ -86,8 +86,6 @@ Inside the SSH session, advertise the VPC's CIDR using the `vpc_ip_range` value 
 ```bash
 sudo tailscale set --advertise-routes=<vpc_ip_range>
 ```
- 
-The VPC CIDR is read from the droplet's actual VPC at plan time rather than supplied as a static variable, which avoids mismatches when deploying to regions with different default CIDR assignments.
 
 ### 5. Verify routing behavior before route approval
  
@@ -142,4 +140,4 @@ terraform destroy
  
 Route advertisement is handled as post-provisioning step rather than being baked into `cloud-init`. Fetching the default VPC address range at provisioning time may be unreliable. By retrieving the VPC range via a Terraform data source and providing it as a verified output, we eliminate the risk of misconfiguration that often occurs when deploying to regions with non-standard CIDR assignments.
  
-Having a second Droplet (`basicubuntu`) is intentional. A subnet router is only meaningful if there are devices on the subnet that are not running Tailscale locally. Having a plain device to route traffic to makes the validation step concrete.
+Having a second Droplet (`basicubuntu`) is intentional. It allows us to validate that using a subnet router, devices on a Tailnet can reach devices on the subnet that are not running Tailscale locally. 
