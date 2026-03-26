@@ -64,9 +64,8 @@ Create the resources and output relevant IP information:
 terraform apply
 ```
 
-Allow approximately 60 seconds after apply for `cloud-init` to complete on the subnet router. Terraform outputs three values once provisioning finishes:
+Allow approximately 60 seconds after apply for `cloud-init` to complete on the subnet router. Terraform outputs two values once provisioning finishes:
  
-- `tailscale_droplet_ip` : public IP of the subnet router
 - `basic_droplet_private_ip` : private IP of the test device
 - `vpc_ip_range` : the exact CIDR to use in the next step
 
