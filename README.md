@@ -99,7 +99,7 @@ This will fail. Advertised subnet routes are not active until approved in the Ta
 
 ### 6. Approve the advertised route
  
-Advertised routes require manual approval in the Tailscale admin console unless `autoApprovers` is configured in your ACL policy. After the device appears:
+Advertised routes require manual approval in the Tailscale admin console. After the device appears on your Tailnet:
  
 1. Go to [Tailscale Admin](https://login.tailscale.com/admin/machines)
 2. Find the `tailscalesubnet` device and open its route settings
@@ -117,7 +117,7 @@ A successful ping confirms that traffic is now flowing through the subnet router
  
 ### Tear down
 
-This will cleanup both droplets and all associated resources: 
+This will cleanup both droplets and delete all associated resources: 
 ```bash
 terraform destroy
 ```
@@ -138,6 +138,6 @@ terraform destroy
  
 ## Design notes
  
-Route advertisement is handled as post-provisioning step rather than being baked into `cloud-init`. Fetching the default VPC address range at provisioning time may be unreliable. By retrieving the VPC range via a Terraform data source and providing it as a verified output, we eliminate the risk of misconfiguration that often occurs when deploying to regions with non-standard CIDR assignments.
+Route advertisement is handled as a post-provisioning step rather than being baked into `cloud-init`. Fetching the default VPC address range during provisioning may be unreliable. By retrieving the VPC range via a Terraform data source and providing it as a verified output, we eliminate the risk of misconfiguration that often occurs when deploying to regions with non-standard CIDR assignments.
  
 Having a second Droplet (`basicubuntu`) is intentional. It allows us to validate that using a subnet router, devices on a Tailnet can reach devices on the subnet that are not running Tailscale locally. 
