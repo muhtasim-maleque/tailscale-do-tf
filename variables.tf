@@ -4,12 +4,6 @@ variable "tailscale_auth_key" {
   sensitive   = true
 }
 
-variable "advertise_routes" {
-  description = "The CIDR block of the VPC to advertise (e.g., 10.116.0.0/20)"
-  type        = string
-  default     = "10.116.0.0/20"
-}
-
 variable "do_token" {
   description = "DigitalOcean API token"
   type        = string

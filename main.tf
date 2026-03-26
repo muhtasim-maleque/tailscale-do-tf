@@ -7,7 +7,7 @@ resource "digitalocean_droplet" "tailscale" {
 
   user_data = templatefile("cloud_init.tftpl", {
     tailscale_auth_key = var.tailscale_auth_key
-    advertise_routes   = var.advertise_routes
+#    advertise_routes   = var.advertise_routes
   })
 }
 
@@ -17,4 +17,8 @@ resource "digitalocean_droplet" "basic" {
   region   = var.region
   size     = var.droplet_size
   ssh_keys = [var.ssh_key_id]
+}
+
+data "digitalocean_vpc" "selected" {
+  id = digitalocean_droplet.tailscale.vpc_uuid
 }
