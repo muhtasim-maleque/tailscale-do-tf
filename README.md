@@ -6,13 +6,13 @@ This repository provides a Terraform-based deployment for a Tailscale Subnet Rou
 ![Tailscale Architecture](./architecture.png)
 Two Droplets are provisioned in the same DigitalOcean region. 
 1. **Subnet Router (`tailscalesubnet`)**: A gateway device configured via `cloud-init`. It installs Tailscale, enables SSH and IP forwarding, and joins the Tailnet using an auth key. Route advertisement is configured manually after provisioning.
-2. **Isolated Device (`basicubuntu`)**: A standard Ubuntu instance with no Tailscale agent. It exists purely to validate that traffic routed through the subnet router reaches a private IP that is not directly on the Tailnet.
+2. **Isolated Basic VM (`basicubuntu`)**: A standard Ubuntu instance with no Tailscale agent. It exists purely to validate that traffic routed through the subnet router reaches a private IP that is not directly on the Tailnet.
 
 ## Prerequisites
 
 - [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.0
 - [Tailscale account](https://tailscale.com/docs/how-to/quickstart) and a reusable auth key
-    * **How to get**: [Admin Console > Settings > Keys > Generate auth key](https://tailscale.com/docs/features/access-control/auth-keys#generate-an-auth-key)
+    * To obtain auth key: [Tailscale Admin Console > Settings > Keys > Generate auth key](https://tailscale.com/docs/features/access-control/auth-keys#generate-an-auth-key)
 - DigitalOcean account with a [Personal Access Token](https://docs.digitalocean.com/reference/api/create-personal-access-token/)
 - DigitalOcean SSH key and its numeric ID:
   - If you have not added one yet, follow the [DigitalOcean guide](https://docs.digitalocean.com/products/droplets/how-to/add-ssh-keys/) to add your public key via Settings > Security > SSH keys
@@ -33,19 +33,17 @@ Two Droplets are provisioned in the same DigitalOcean region.
 | `droplet_size` | Droplet size | `s-1vcpu-1gb` |
 | `ubuntu_image` | OS image | `ubuntu-24-04-x64` |
 
+You can set environment variables using the `TF_VAR_` prefix to a variable name. Required variables (those without a default) must be exported after they are obtained in the Prerequisites section. Optional variables with a default can be overridden the same way, for example, `export TF_VAR_region="sfo3"` to deploy to a different region.
+
 ## Deployment
 
 ### 1. Set variables
-
-You can set environment variables using the `TF_VAR_` prefix to a variable name. The following are the required variables for this deployment:
 
 ```bash
 export TF_VAR_do_token="your_digitalocean_token"
 export TF_VAR_tailscale_auth_key="your_tailscale_auth_key"
 export TF_VAR_ssh_key_id="your_digitalocean_numeric_ssh_id"
 ```
-
-Variables with a default can be overridden the same way — for example, `export TF_VAR_region="sfo3"` to deploy to a different region.
 
 Other alternative methods for passing variable values are documented [here](https://developer.hashicorp.com/terraform/language/values/variables#assign-values-to-variables).
 
@@ -73,17 +71,20 @@ Allow approximately 60 seconds after apply for `cloud-init` to complete on the s
 - `vpc_ip_range` : the exact CIDR to use in the next step
 
 ### 4. Advertise the subnet route
- 
-SSH into the subnet router using Tailscale SSH (your machine must be connected to the same Tailnet):
+Check `tailscale status` from your local machine to confirm `tailscalesubnet` has joined your Tailnet:
+```bash
+tailscale status
+```
+SSH into the subnet router using Tailscale SSH as `demo` user:
  
 ```bash
-ssh root@tailscalesubnet
+ssh demo@tailscalesubnet
 ```
  
-Then advertise the VPC's CIDR using the `vpc_ip_range` value from the Terraform output:
+Inside the SSH session, advertise the VPC's CIDR using the `vpc_ip_range` value from the Terraform output:
  
 ```bash
-tailscale set --advertise-routes=<vpc_ip_range>
+sudo tailscale set --advertise-routes=<vpc_ip_range>
 ```
  
 The VPC CIDR is read from the droplet's actual VPC at plan time rather than supplied as a static variable, which avoids mismatches when deploying to regions with different default CIDR assignments.
@@ -127,16 +128,18 @@ terraform destroy
  
 ```
 .
-├── providers.tf        # Terraform version constraints and DigitalOcean provider config
-├── variables.tf        # All input variable declarations with types and defaults
-├── main.tf             # The two Droplet resources and VPC data source
-├── outputs.tf          # Public IP of the router, private IP of the test device, VPC CIDR
-├── cloud_init.tftpl    # cloud-init template run on first boot of the Tailscale subnet router
-└── .gitignore          # Excludes .tfvars, .tfstate, and .terraform/
+├── architecture.png    # Visual representation of the VPC and Tailnet bridge
+├── cloud_init.tftpl    # cloud-init template run on first boot of the Subnet Router
+├── main.tf             # Droplet resources and the dynamic VPC data source
+├── outputs.tf          # Provisioning data: Router IP, Test IP, and VPC CIDR
+├── providers.tf        # Terraform & DigitalOcean provider version constraints
+├── variables.tf        # Input variable declarations with types and defaults
+├── .terraform.lock.hcl # Dependency lock file to ensure provider version consistency
+└── .gitignore          # Excludes .tfstate, .terraform/, and local secrets
 ```
  
 ## Design notes
  
-Route advertisement is a manual step rather than being baked into `cloud-init`. Fetching the default VPC address range at provisioning time may be unreliable. Instead, the VPC CIDR is read via a `digitalocean_vpc` data source and provided as a Terraform output. This makes the correct value explicit and eliminates guesswork when deploying to regions with non-standard CIDR assignments.
+Route advertisement is handled as post-provisioning step rather than being baked into `cloud-init`. Fetching the default VPC address range at provisioning time may be unreliable. By retrieving the VPC range via a Terraform data source and providing it as a verified output, we eliminate the risk of misconfiguration that often occurs when deploying to regions with non-standard CIDR assignments.
  
-Having a second Droplet (`basicubuntu`) is intentional. A subnet router is only meaningful if there are devices on the subnet that are not running Tailscale locally. Gaving a plain device to route traffic to makes the validation step concrete.
+Having a second Droplet (`basicubuntu`) is intentional. A subnet router is only meaningful if there are devices on the subnet that are not running Tailscale locally. Having a plain device to route traffic to makes the validation step concrete.
